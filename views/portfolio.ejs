@@ -1,0 +1,189 @@
+<!doctype html>
+<html >
+<head>
+  <meta charset="utf-8">
+  <title>jQuery UI Sortable - Default functionality</title>
+  <link rel="stylesheet" href="/stylesheets/style.css">
+  <link rel="stylesheet" href="/include/jquery-ui.min.css">
+  <script src="/include/jquery-2.1.4.min.js"></script>
+  <script src="/include/jquery-ui.min.js"></script>
+  <style>
+  .ui-autocomplete.ui-widget { font-size: 0.8em; line-height:0.8em }
+  </style>
+</head>
+<body>
+<%- include home_menu %>
+ <hr><br>
+<!-- portfolio menu -->
+<div class="portfolioMenu">
+  <span> Group </span> 
+  <a href="/portfolio/TW">TW</a>
+  <a href="/portfolio/US">US</a>
+  <a href="/portfolio/HK">HK</a>
+<ul>
+  <li><a href="/portfolio/<%=pfGroup%>/edit">EditPortfolio</a></li>
+  <li><a href="/portfolio/<%=pfGroup%>/create">CreatePortfolio</a></li>
+  <li><a href="/portfolio/<%=pfGroup%>/reorder">ReorderPortfolio</a></li>
+  <li><a href="/portfolio/<%=pfGroup%>/delete">DeletePortfolio</a></li>
+  <li><a href="/portfolio/<%=pfGroup%>/import">ImportPortfolio</a></li>
+  <li><a href="/portfolio/<%=pfGroup%>/export">ExportPortfolio</a></li>
+  <hr>
+</ul>
+</div>
+
+<span><%= pfGroup %><span>
+<!-- portfolio tag -->
+<% pfNameArray.forEach(function (pfName, index) { %>
+    <a href="/portfolio/<%=pfGroup%>/pf<%= pfName.index %>"> <%= pfName.name %></a>
+<% }) %>
+<br>
+
+<!-- add Symbol  -->
+<form method="post" action="/portfolio/<%= pfGroup %>/<%= pfIndex %>/addSymbol" id="addSymbolForm">
+<input type="text" name="symbol" >
+<input type="submit" value="Add Symbol" class="AddSymbol" />
+</form>
+
+<div class="portfolioMenu" id="symbolMenu">
+ <ul>
+  <li><a href="/portfolio/<%=pfGroup%>/<%=pfIndex%>/edit">EditWatchList</a></li>
+  <li><a href="/portfolio/<%=pfGroup%>/<%=pfIndex%>/reorder">ReorderWatchList</a></li>
+  <li> <a href="#" onclick="openChartWin( currentPf.stockArray[0].stockId, currentPf.stockArray[0].marketType, currentPf.stockArray[0].stockName)">ChartWatchList</a></li><br>
+</a>
+ </ul>
+</div>
+
+
+<!-- show portfolio watchlist quote -->
+<link rel="stylesheet" href="/include/jquery-ui.min.css">
+<script src="/include/jquery-2.1.4.min.js"></script>
+<script src="/include/jquery-ui.min.js"></script>
+<script>
+function openChartWin(stockId,marketType,stockName)
+{
+var chartUrl="/portfolio/" + "<%=pfGroup%>" + "/" + "<%=pfIndex%>" +  "/chart?stockId=" + stockId + 
+              "&marketType=" + marketType + "&stockName=" + stockName + "&period=0";
+
+  window.open(chartUrl,"chart","height=600,width=1000,location=no,scrollbars=no" );
+}
+  var patharray=window.location.pathname.split("/"),
+      pfGroup=patharray[2],
+      pfIndex=patharray[3];
+  var currentPf=<%- currentPortfolio %>;
+  var pfStock=[];
+$(document).ready(function() {
+    var trHTML = '';
+    var index, len, item, stockSymbol;
+    for (index = 0, len = currentPf.stockArray.length; index < len; ++index) {
+      pfStock=currentPf.stockArray[index];
+      if (pfStock.marketType != pfGroup) stockSymbol = pfStock.stockId + "." + pfStock.marketType;
+      else stockSymbol = pfStock.stockId + pfStock.stockName;
+      if (pfStock.stockId == pfStock.stockName) stockSymbol = pfStock.stockId; //US stock just show stockId whatever it is in any group.
+      //if (ibjArray1.stockId == pfStock.stockName) stockSymbol = pfStock.stockId; //US stock case
+      trHTML= "<tr id=trid" + index   + ">" + 
+              "<td><a href=/portfolio/" + "<%=pfGroup%>" + "/" + "<%=pfIndex%>"  + "/chart?stockId="  + 
+              pfStock.stockId + "&marketType=" + pfStock.marketType + "&stockName=" + pfStock.stockName + ">" + stockSymbol + "</a></td>" + 
+              "<td>" + item + "</td><td>" + item + "</td><td>" + item + "</td><td>" + item + "</td><td>" + item + 
+              "</td><td>" + item + "</td>" +
+              "<td><input type=\"checkbox\" id=checkbox"  + index + "</td>" +
+              "</tr>";
+      $("#pfStockTable").append(trHTML);
+      queryLastStockData(pfStock,index); //update table content
+    }
+  //console.log(currentPf.name);
+  console.log(currentPf);
+  //alert(currentPf.name);
+  $("#pfStockTableTitle").text(currentPf.name);
+  $("tr:even").addClass("even");  /*给奇数行添加样式*/
+  $("tr:odd").addClass("odd");  /*偶数行添加样式*/
+  //處理Delete和addSymbol
+  $('#btnDelete').on('click', delete_stockSymbol);
+  $('#addSymbolForm').on('mouseenter','input[type=\'text\']',function () {
+     $(this).autocomplete({source: "/portfolio/" + pfGroup + "/" + pfIndex + "/getStockNameAuto", delay: 1000, minLength: 0});//送出get qrystring為term=XXXX
+  });
+  $("[id^='trid'] td").eq(0).css("width","130")
+  $("#pfStockTable").on('click',"[id^='trid'] td a",function(){
+     //console.log($(this).parents("[id^=trid]").attr('id'));  
+     var clickNo=$(this).parents("[id^=trid]").attr('id').replace("trid","");  
+     //console.log(clickNo);
+     openChartWin( currentPf.stockArray[clickNo].stockId, currentPf.stockArray[clickNo].marketType, currentPf.stockArray[clickNo].stockName);
+     return false; 
+   });
+});
+function delete_stockSymbol(){
+  $("input:checkbox").each(function(){ 
+    if (this.checked){
+      var i;    
+      i=parseInt(this.id.replace("checkbox",""));
+      delete currentPf.stockArray[i];
+    } 
+  }); 
+  console.log(JSON.parse(JSON.stringify(currentPf.stockArray))); 
+  // Delete selected portfolio in portfolio array
+  for(i=0,j=0, Count=currentPf.stockArray.length; i< Count ; i++){
+    if (currentPf.stockArray[j]==null) { 
+      currentPf.stockArray.splice(j,1);
+      j--;
+    }
+    j++;
+  }
+  console.log(JSON.parse(JSON.stringify(currentPf.stockArray))); 
+  console.log(currentPf); 
+  $.ajax({
+      type: 'POST',
+      url: '/portfolio/' + pfGroup +"/"+ pfIndex +'/updatePortfolioSymbolList',
+      data: JSON.stringify(currentPf), //data to be send
+      contentType: "application/json", //content type of send data
+      error: function (msg) { alert("AJAX Error" + msg.responseText); },
+      success: function(result) { window.location.reload(); }  //document.refer會返回呼叫此html的URL
+  }); 
+} 
+function queryLastStockData(pfStock,index){
+  $.ajax({
+      type: 'POST',
+      url: '/portfolio/' + pfGroup +"/"+ pfIndex +'/queryLastStockData',
+      data: JSON.stringify({'stockId':pfStock.stockId,'marketType':pfStock.marketType}), //data to be send
+      contentType: "application/json", //content type of send data
+      //contentType: "application/x-www-form-urlencoded", //content type of send data
+      error: function (msg) { alert("AJAX Error" + msg.responseText); },
+      success: function(stockData) {
+                 //console.log(stockData);
+                 //alert(stockData[0].historyData.close);
+                 var date=new Date(stockData[0].historyData.date);
+                 $("#trid"+index).children().eq(1).text(stockData[0].historyData.close);
+                 $("#trid"+index).children().eq(2).text(stockData[0].historyData.high);
+                 $("#trid"+index).children().eq(3).text(stockData[0].historyData.low);
+                 $("#trid"+index).children().eq(4).text(stockData[0].historyData.open);
+                 $("#trid"+index).children().eq(5).text(stockData[0].historyData.volume);
+                 $("#trid"+index).children().eq(6).text(date.toLocaleDateString());
+               }
+  }); 
+} 
+</script>
+<style>
+  .even{ background-color:#EBF5FF;} /*奇数行样式*/
+  #pfStockTable { border:1px #cccccc solid;padding:1px; table-layout:fixed;}
+  #pfStockTable tr th,td { width: 100px; border:1px #cccccc solid;padding:1px;}
+  #pfStockTable tr th:first  { width: 300px; border:1px #cccccc solid;padding:1px;}
+  #pfStockTable tr td:first  { width: 300px; border:1px #cccccc solid;padding:1px;}
+  #pfStockTable tr th:last  { width: 300px; border:1px #cccccc solid;padding:1px;}
+</style>
+
+<div id="pfStockTableDiv">
+  <p id="pfStockTableTitle" ></p>
+    <table id="pfStockTable" cellpadding="0" cellspacing="0">
+        <tr><th class="columnSymbol">Symbol</th>
+            <th>close</th>
+            <th>open</th>
+            <th>high</th>
+            <th>low</th>
+            <th>volume</th>
+            <th>date</th>
+            <th><input type="button" id="btnDelete" value="Delete" ></th>
+        </tr>
+    </table>
+    <span class="table_bottom"></span>
+</div>
+
+</body>
+</html>

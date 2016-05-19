@@ -1,0 +1,235 @@
+<!doctype html>
+<html >
+<head>
+  <meta charset="utf-8">
+  <title>jQuery UI Sortable - Default functionality</title>
+  <link rel="stylesheet" href="/include/jquery-ui.min.css">
+  <script src="/include/jquery-2.1.4.min.js"></script>
+  <script src="/include/jquery-ui.min.js"></script>
+  <script src="/include/highstock.src.js"></script>
+  <script src="/include/indicators.js"></script>
+  <script src="/include/sma.js"></script>
+  <script src="/include/ema.js"></script>
+  <script src="/include/rsi.js"></script>
+  <script src="/include/atr.js"></script>
+  <style> .info {white-space:pre}</style>
+  <script>
+var portfolio;
+var newArray=[];
+var patharray=window.location.pathname.split("/"),
+    pfGroup=patharray[2],
+    pfIndex=patharray[3];
+var pfIndexNum=parseInt(patharray[3].replace("pf",""));
+var currentPf=[],currentStockIndex,i;
+    portfolioCount=<%=portfolioCount%>;
+var stockObj=<%- stockObj %>,
+    rangeSelect=0,
+    chartPeriodSelect=<%=period%>,
+    chartPeriod=["day","week","month"];
+    //alert(pfIndex);
+var rangeButton=[{ type: 'month', count: 3, text: '3m' }, { type: 'month', count: 6, text: '6m' }, { type: 'month', count: 9, text: '9m' }, 
+                 { type: 'year', count: 1, text: '1y' }, { type: 'year', count: 1, text: '5y' },{ type: 'all', text: 'All' }];
+
+window.moveTo(0, 0);
+window.resizeTo(screen.availWidth, screen.availHeight);
+
+$(function () {
+  $.post("/portfolio/" + pfGroup + "/" + pfIndex + "/symbolList",
+     function(portfolio){ 
+       currentPf=portfolio;
+       for(i=0; i < portfolio.stockArray.length; i++) { //find the index of query stock in watchlist.
+         if(portfolio.stockArray[i].stockId == stockObj.stockId) {
+           break;
+         }
+       }
+       currentStockIndex=i;
+       //console.log(portfolio);      
+       console.log($("#chartInfo").text(chartPeriod[chartPeriodSelect].toUpperCase() + " Chart" + ":" + currentPf.group +'/' + currentPf.name));
+     },
+     'json'
+  );
+//console.log(stockObj);
+chartk(stockObj, chartPeriodSelect);
+$("#chartKeyInfo").text("[Up]: Previous Stock     [Down]: Next Stock     [Left/Right]:Range    [Space]Day/Week/Month    [ESC]:Exit ");
+
+document.onkeydown = function(e) {
+    switch (e.keyCode) {
+        case 38: //up
+          if (currentStockIndex == 0) {
+            i=currentStockIndex;
+            if (pfIndexNum == 0) break; //mark this line let chart can jump from end jump to begin.
+            pfIndex1 = "pf" + String(pfIndexNum - 1) ;
+            $.post("/portfolio/" + pfGroup + "/" + pfIndex1 + "/symbolList",
+                  function(portfolio){ 
+                   console.log(portfolio);
+                   window.location="http://" + window.location.host + "/portfolio/" + pfGroup + "/" + pfIndex1 +  "/chart?stockId=" + 
+                     portfolio.stockArray[portfolio.stockArray.length-1].stockId + "&marketType=" +
+                     portfolio.stockArray[portfolio.stockArray.length-1].marketType + 
+                     "&stockName=" + portfolio.stockArray[portfolio.stockArray.length-1].stockName + "&period=0";
+            })
+          }
+          else { i=currentStockIndex-1;
+            //alert("i=" + i);
+            chartkLoad(i,0)
+          }
+          break;
+        case 40: //down
+          if (currentStockIndex == (currentPf.stockArray.length-1)) { 
+            i=currentStockIndex;
+            if (pfIndexNum==(portfolioCount-1)) break; //mark this line let chart can jump from end to begin.
+            pfIndex1 = "pf" + String((pfIndexNum + 1) % Number(portfolioCount));
+            $.post("/portfolio/" + pfGroup + "/" + pfIndex1 + "/symbolList",
+                  function(portfolio){ 
+                   //console.log(portfolio);
+                   window.location="http://" + window.location.host + "/portfolio/" + pfGroup + "/" + pfIndex1 +  "/chart?stockId=" + 
+                    portfolio.stockArray[0].stockId + "&marketType=" + portfolio.stockArray[0].marketType + 
+                     "&stockName=" + portfolio.stockArray[0].stockName + "&period=0";
+            })
+          } 
+          else{ i=currentStockIndex+1;
+            //alert("i=" + i);
+            chartkLoad(i,0)
+          }
+            break;
+        case 37: //left
+            if (rangeSelect != 0 ) rangeSelect--
+            //chart.rangeSelector.clickButton(0,{type: 'month', count: 3},true);
+            $('#container').highcharts().rangeSelector.clickButton(rangeSelect, true);
+            break;
+        case 39: //right
+            if (rangeSelect < (rangeButton.length-1) ) rangeSelect++;
+            $('#container').highcharts().rangeSelector.clickButton(rangeSelect, true);
+   //         chart.rangeSelector.clickButton(3,{type: 'month', count: 9},true);
+            break;
+        case 32: //space Bar
+            chartPeriodSelect = ++chartPeriodSelect % chartPeriod.length;
+            chartkLoad(currentStockIndex,chartPeriodSelect);
+            break;
+        case 27: //close window
+            window.close();
+            break;
+    }
+};
+});   
+function chartkLoad(i, chartPeriodSelect){
+          window.location="http://" + window.location.host + "/portfolio/" + pfGroup + "/" + pfIndex +  "/chart?stockId=" + 
+            currentPf.stockArray[i].stockId + "&marketType=" + currentPf.stockArray[i].marketType + 
+            "&stockName=" + currentPf.stockArray[i].stockName + "&period=" + chartPeriodSelect ;
+}
+function chartk(stockObj,chartPeriodSelect){
+   $.getJSON('/portfolio/' + pfGroup + '/' + pfIndex + '/queryStockData?stockId=' + stockObj.stockId +
+            '&marketType=' + stockObj.marketType + '&stockName=' + stockObj.stockName, function (data) {
+        data.sort(function(a,b){ return Date.parse(a.date)-Date.parse(b.date); });
+        console.log(data);
+        var dataMax = Math.max.apply(Math,data.map(function(o){return o.high;}));
+        var dataMin = Math.min.apply(Math,data.map(function(o){return o.high;}));
+        if ((stockObj.stockId==stockObj.stockName)||(stockObj.stockName=='null')) chartTitle=stockObj.stockId;
+        else  chartTitle=stockObj.stockId + stockObj.stockName;
+        if (pfGroup!=stockObj.marketType) chartTitle=chartTitle + '.' + stockObj.marketType;
+        // split the data set into ohlc and volume
+        var ohlc = [],
+            volume = [],
+            dataLength = data.length,
+            groupingUnits=[],
+            i = 0;
+        var indicators = [];
+        var sma5  = { id: stockObj.stockId, type: 'sma', name: 'SMA5', params: { period: 5 },
+	              styles: { strokeWidth: 0.2, stroke: 'cadetblue', dashstyle: 'solid' }, showInLegend: true },
+            sma10 = { id: stockObj.stockId, type: 'sma', name: 'SMA10', params: { period: 10 }, 
+                      styles: { strokeWidth: 0.2, stroke: 'coral', dashstyle: 'solid' }, showInLegend: true }, 
+            sma20 = { id: stockObj.stockId, type: 'sma', name: 'SMA20', params: { period: 20 },
+	              styles: { strokeWidth: 0.2, stroke: 'violet', dashstyle: 'solid' }, showInLegend: true }, 
+            sma60 = { id: stockObj.stockId, type: 'sma', name: 'SMA60', params: { period: 60 },
+	              styles: { strokeWidth: 0.2, stroke: 'yellowgreen', dashstyle: 'solid' }, showInLegend: true },
+            sma50 = { id: stockObj.stockId, type: 'sma', name: 'SMA50', params: { period: 500 },
+	              styles: { strokeWidth: 0.2, stroke: 'yellowgreen', dashstyle: 'solid' }, showInLegend: true }, 
+            sma200 = { id: stockObj.stockId, type: 'sma', name: 'SMA200', params: { period: 200 },
+	              styles: { strokeWidth: 0.2, stroke: 'red', dashstyle: 'solid' }, showInLegend: true }, 
+            sma240 = { id: stockObj.stockId, type: 'sma', name: 'SMA240', params: { period: 240 },
+	              styles: { strokeWidth: 0.2, stroke: 'red', dashstyle: 'solid' }, showInLegend: true },
+            atr = { id: stockObj.stockId, type: 'atr', params: { period: 14 },
+	              styles: { strokeWidth: 0.2, stroke: 'red', dashstyle: 'solid' }, showInLegend: true },
+            //rsi must include ema.js
+            rsi = { id: stockObj.stockId, type: 'rsi', params: { period: 14, overbought: 70, oversold: 30 },
+		    styles: { strokeWidth: 2, stroke: 'black', dashstyle: 'solid' },
+		    yAxis: { lineWidth: 2, title: { text:'RSI' } }, showInLegend: true };
+
+        if (chartPeriodSelect == 0) { groupingUnits=[['day',[1]],['week',[1]]];
+                                      rangeSelect=2; indicators=[sma5,sma10,sma20,sma60,sma240];
+                                    }
+        if (chartPeriodSelect == 1) { groupingUnits=[['week',[1]]];
+                                      rangeSelect=3; indicators=[sma20,sma60,sma240];
+                                    }
+        if (chartPeriodSelect == 2) { groupingUnits=[['month',[1]]];
+                                      rangeSelect=4; indicators=[sma20,sma60,sma240];
+                                    }
+        for (i; i < dataLength; i += 1) {
+            ohlc.push([
+                Date.parse(data[i].date), // the date, convert to millisecond
+                data[i].open, // open
+                data[i].high, // high
+                data[i].low, // low
+                data[i].close // close
+            ]);
+
+            volume.push([
+                Date.parse(data[i].date), // the date
+                data[i].volume // the volume
+            ]);
+        }
+        // create the chart
+        $('#container').highcharts('StockChart', {
+           indicators: indicators,
+            tooltip:{ enabledIndicators: true },
+            rangeSelector: { buttons: rangeButton, selected: rangeSelect },
+            title: { text: chartTitle },
+            xAxis:{  type: 'datetime',
+                     dateTimeLabelFormats: {
+                               month: '%e. %b',
+                               year: '%b'
+                             }
+                  },
+            yAxis: [{
+                labels: { align: 'right', x: -3 },
+                title: { text: 'OHLC' },
+                height: '90%',
+                lineWidth: 2,
+                max: dataMax, 
+                min: dataMin, 
+                maxPadding:0.01
+                }, {
+                labels: { align: 'right', x: -3 },
+                title: { text: 'Volume' },
+                top: '100%',
+                height: '20%',
+                offset: 0,
+                lineWidth: 2,
+            }],
+            series: [{
+                type: 'candlestick',
+                id: stockObj.stockId, //must be set when use indicators.
+                name: stockObj.stockId,
+                color: 'green',
+                upColor: 'red',
+                data: ohlc,
+                dataGrouping: { units: groupingUnits, groupPixelWidth: 10 },
+                //pointInterval: 300 * 24 * 3600 * 1000
+                }, {
+                type: 'column',
+                name: 'Volume',
+                data: volume,
+                yAxis: 1,
+                dataGrouping: { units: groupingUnits, groupPixelWidth: 12 }
+            }]
+        });
+    });
+}
+
+  </script>
+</head>
+<body>
+  <div id="container" style="min-width: 500x; height: 650px; margin: 0 auto"></div>
+  <div id="chartInfo" style="float:left" class="info" ></div>
+  <div id="chartKeyInfo" style= "float:right" class="info" ></div>
+</body>
+</html>

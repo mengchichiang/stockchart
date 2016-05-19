@@ -1,0 +1,16 @@
+/* inspired by http://yihui.name/cn/ */
+*{padding:0;margin:0;}
+body{margin:2em auto;padding:0 2em;font-size:100%;font-family:"Microsoft YaHei";} 
+p,span{line-height:1.5em;margin:0.1em 0;}
+#homeMenu ul li {display:inline;uppercase;width:1em;text-align:left;margin:5em 0;}
+#homeMenu ul li a{display:inline;text-decoration:none;padding:.1em 1em;color:#000000;}
+.portfolioMenu ul {list-style-type: none; margin: 0; padding: 0; overflow: hidden; border: 1px solid #e7e7e7; background-color: #f3f3f3;}
+.portfolioMenu ul li {float:left; border-right: 1px solid #bbb;width:130px;padding:0;}
+.portfolioMenu ul li a{display:block;text-decoration:none;padding: 0.3em 0px; text-align:center;}
+.portfolioMenu ul li a:hover{background-color:#ddd;color:white;}
+
+#symbolMenu ul li a{padding: 0.1em 0px;}
+
+#addSymbolForm  {float:left;margin:0em 0em;font-size:1.0em;}
+#addSymbolForm input[type=text] {  padding:0em 0px; font-family:"Microsoft YaHei";font-size:1.0em; }
+#addSymbolForm input[type=submit] {  padding:0em 0px; font-family:"Microsoft YaHei";font-size:1.0em; }

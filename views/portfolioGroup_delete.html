@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Delete portfolio</title>
+  <style>
+  img {
+    height: 100px;
+    float: left;
+  }
+  </style>
+  <script src="/include/jquery-2.1.4.min.js"></script>
+</head>
+<body>
+<script>
+var portfolio=[];
+var patharray=window.location.pathname.split("/");
+pfGroup=patharray[2];
+//alert(pfGroup);
+$(document).ready(function(){
+$('#portfolioType').html(pfGroup + ' Portfolio List');
+  $.ajax({
+     type:"POST",
+     url:"/portfolio/" + pfGroup + "/portfolioList", //取得資料的頁面網址
+ //    data:pfGroup, //送出資料給server, 若為GET資料會放在URL後面
+     dataType:"json", //server傳回的資料格式 
+     success:function(data){ //ajax 成功後要執行的函式
+       var trHTML = '';
+       data.sort(function(a,b){ return parseInt(a.index)-parseInt(b.index); })
+       $.each(data,function(index,item){                     
+         trHTML +=  "<tr><td><input type=\"checkbox\" id=checkbox" + index + " ></td>" + 
+                    "<td>" + item.index + "</td>" + "<td>" + item.name + "</td></tr>" ;
+       });   
+       $("#portfolioTable").append(trHTML);
+       portfolio=data;
+     },
+  });   
+  $('#btnDelete').on('click', delete_portfolio);
+});
+var pfDelArray=[];
+function delete_portfolio(){
+  //console.log(JSON.parse(JSON.stringify(portfolio))); 
+  $("input:checkbox").each(function(){ 
+    if (this.checked){
+      var i;    
+      i=parseInt(this.id.replace("checkbox",""));
+      pfDelArray.push(portfolio[i]._id)
+      delete portfolio[i];
+      console.log(pfDelArray);
+    } 
+  }); 
+  //console.log(JSON.parse(JSON.stringify(portfolio))); 
+  // Delete selected portfolio in portfolio array
+  for(i=0,j=0, portfolioCount=portfolio.length; i< portfolioCount ; i++){
+    if (portfolio[j]==null) { 
+      portfolio.splice(j,1);
+      j--;
+    }
+    j++;
+  }
+  //sort portfolio array
+  portfolio.sort(function(a,b){ return parseInt(a.index)-parseInt(b.index); });
+  //console.log(JSON.parse(JSON.stringify(portfolio))); 
+  //change portfolio index to new index
+  for(i=0, portfolioCount=portfolio.length; i< portfolioCount ; i++){
+    portfolio[i].index=i;
+  }
+  var delUpdateData={ delete:pfDelArray, update:portfolio } //delete欄位存放要刪除portfolio的_id,update欄位放要被update的新portfolio (group,name,index欄位)
+  //console.log(JSON.parse(JSON.stringify(delUpdateData))); 
+  $.ajax({
+      type: 'POST',
+      url: '/portfolio/' + pfGroup + '/deletePortfolioList',
+      data: JSON.stringify(delUpdateData), 
+      contentType: "application/json",
+      error: function (msg) { alert("AJAX Error" + msg.responseText); },
+      success: function(result) { window.location="http://" + window.location.host + "/portfolio/" + pfGroup; }  //document.refer會返回呼叫此html的URL
+  });
+}  
+</script>
+
+<div id="result" class="container">
+<h3 id="portfolioType">Portfolio List</h3>
+   <div class="span7 offset2">       
+     <table id="portfolioTable" class="table table-striped" border="1" cellspaceing="0">
+       <tr><th> Select </th><th> index </th> <th> name </th></tr>
+     </table>
+   </div>
+    <input type="button" id="btnDelete" value="Delete & Save" >
+</div>
+</body> 
+</html>

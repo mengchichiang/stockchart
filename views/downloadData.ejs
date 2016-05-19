@@ -1,0 +1,79 @@
+<!doctype html>
+<html >
+<head>
+  <meta charset="utf-8">
+  <title>jQuery UI Sortable - Default functionality</title>
+  <link rel="stylesheet" href="/stylesheets/style.css">
+  <script src="/include/jquery-2.1.4.min.js"></script>
+</head>
+<body>
+<script>
+
+var pollInterval = 5000; //polling interval for download status
+var allDoneFlag=0;
+
+function stockHistoryDownload(){
+  allDoneFlag = 0;
+  $.ajax({
+     type:"POST",
+     url:"/downloadData", //取得資料的頁面網址
+     data:$("form").serialize(),
+     dataType:"text", //server傳回的資料格式 
+     success: function(data) { $('form').append('<div>' + data + '</div>'); allDoneFlag=1; }, 
+     error: function () {  $('form').append('<div> Download Fail!!!" </div>'); allDoneFlag=1 ; }
+  });   
+}
+
+function stockHistoryDownload_showStatus(data) {  //polling the status
+   var  msgArray=data.split(','); //字串轉array
+   for(i=0 ; i<msgArray.length ; i++){
+     $('form').append('<div>' + msgArray[i] + '</div>');
+   }
+   if (allDoneFlag != 1) {
+     setTimeout(stockHistoryDownload_GetStatus, pollInterval); //prepare to show next status
+  } else {
+      return 1;  //exit recursive call
+  }
+} 
+
+function stockHistoryDownload_GetStatus(){
+  $.ajax({
+     type:"POST",
+     url:"/downloadData/status", //取得資料的頁面網址
+     dataType:"text", //server傳回的資料格式 
+     success: function(data) { stockHistoryDownload_showStatus(data); }, //if success, show status
+     error: function () {
+            setTimeout(stockHistoryDownload_GetStatus, pollInterval); //if fail, prepare next update
+     }
+  });   
+}
+
+$(document).ready(function(){
+  $("form").submit(function(){ //intercept form submit
+    $('input[type="submit"]').prop('disabled', true);
+    stockHistoryDownload();
+    stockHistoryDownload_GetStatus();
+    return false;  //disable form submit to advoid change page.
+  });
+  $("#btnDownloadAll").on("click",function(){
+    $("#checkboxTW").attr("checked","checked");
+    $("#checkboxUS").attr("checked","checked");
+    $("#checkboxHK").attr("checked","checked");
+   $("form").submit();
+  }) 
+});
+</script>
+<%- include home_menu %>
+ <hr><br>
+<input type="button" id="btnDownloadAll" value="Download all data" > <br>
+<br>
+<div> Select portfolio group to download: </div>
+<form name="StockDataDownload" method="post" >
+<input type='checkbox' id='checkboxTW' name="selectTW" value="on">TW<br>
+<input type='checkbox' id='checkboxUS' name="selectUS" value="on">US<br>
+<input type='checkbox' id='checkboxHK' name="selectHK" value="on">HK<br>
+<input type="submit"  value="Download data" > <br>
+</form>
+<div id="serverMsg"></div>
+</body>
+</html>

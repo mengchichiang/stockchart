@@ -1,0 +1,88 @@
+<!doctype html>
+<html >
+<head>
+  <meta charset="utf-8">
+  <title>jQuery UI Sortable - Default functionality</title>
+  <link rel="stylesheet" href="/include/jquery-ui.min.css">
+  <script src="/include/jquery-2.1.4.min.js"></script>
+  <script src="/include/jquery-ui.min.js"></script>
+  <link rel="stylesheet" href="/resources/demos/style.css">
+  <style>
+  #sortable { list-style-type: none; margin: 0; padding: 0; width: 60%; }
+  #sortable li { margin: 0 3px 3px 3px; padding: 0.4em; padding-left: 1.5em; font-size: 1.4em; height: 18px; }
+  #sortable li span { position: absolute; margin-left: -1.3em; }
+  </style>
+  <script>
+var portfolio;
+var newArray=[];
+var patharray=window.location.pathname.split("/"),
+    pfGroup=patharray[2],
+    pfIndex=patharray[3];
+var pfIndexNum=parseInt(patharray[3].replace("pf",""));
+ //alert(pfIndex);
+$(function() {
+$('#portfolioType').html(pfGroup + ' Portfolio List');
+  $.ajax({
+     type:"POST",
+     url:"/portfolio/" + pfGroup + "/" + pfIndex + "/symbolList",//取得資料的頁面網址
+     dataType:"json", //server傳回的資料格式 
+     //ajax 成功後要執行的函式
+     success:function(data){ 
+       var trHTML = '';
+       portfolio=data;
+       console.log(portfolio);      
+       $.each(portfolio.stockArray,function(index,item){                     
+         //console.log(item);
+         trHTML += "<li  class=\"ui-state-default\" itemID=" + index + ">" + "<span class=\"ui-icon ui-icon-arrowthick-2-n-s\"></span>" + 
+                   item.stockId +" " + item.stockName + "</li>" ;
+       });   
+       $("#sortable").append(trHTML);
+     },
+  });   
+    $("#btnReorderSave").on('click', reorder_save_click);
+    $("#sortable").sortable();
+    $("#sortable").disableSelection();
+});
+
+function reorder_save_click() {
+  // ----- Retrieve the li items inside our sortable list
+  var items = $("#sortable li");
+  var linkIDs = [items.size()];
+  // ----- Iterate through each li under ul <id="sortable">, extracting the ID embedded as an attribute
+  items.each( function(index) {
+    newArray.push({stockId:portfolio.stockArray[$(this).attr("itemID")].stockId,stockName:portfolio.stockArray[$(this).attr("itemID")].stockName, marketType:portfolio.stockArray[$(this).attr("itemID")].marketType })
+    //newArray.push(index);
+    linkIDs[index]=$(this).text();
+  });
+  console.log(newArray);
+  console.log(portfolio.stockArray);
+  console.log(linkIDs);
+  console.log(portfolio);
+  var str=linkIDs.join(",");
+  //console.log(str);
+  $("#indexResult").append(str);
+  //sort portfolio array
+  portfolio.stockArray.length=0
+  for(i=0, stockCount=newArray.length; i< stockCount ; i++){
+    portfolio.stockArray.push( {stockId:newArray[i].stockId, stockName:newArray[i].stockName, marketType:newArray[i].marketType } );
+  }
+  console.log(portfolio); 
+  $.ajax({
+      type: 'POST',
+      url: '/portfolio/' + pfGroup + '/' + pfIndex + '/updatePortfolioSymbolList',
+      data: JSON.stringify(portfolio), 
+      contentType: "application/json",
+      error: function (msg) { alert("AJAX Error" + msg.responseText); },
+      success: function(result) {  window.location=document.referrer; } //document.refer會返回呼叫此html的URL
+  });
+}
+  </script>
+</head>
+<body>
+<h3 id="portfolioType">Portfolio List</h3>
+<ul id="sortable">
+</ul>
+ <input type="button" id="btnReorderSave"  value="save" > </input>
+ <p id="indexResult"></p>
+</body>
+</html>
