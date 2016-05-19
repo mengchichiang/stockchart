@@ -21,8 +21,8 @@ It focus on TW(Taiwan台股) HK(HongKong港股) and US stockmarket.
 
 ## Usage
 ### Portfolio example
-      * A example csv  file `/stockchart/portfolioUS.csv` can be import  under group US.
-      * US market stock can be list in group TW or HK if  the format is xxxx.US.
+  * A example csv  file `/stockchart/portfolioUS.csv` can be import  under group US.
+  * US market stock can be list in group TW or HK if  the format is xxxx.US.
 ### config.ini
-      * Setup username and password.
-      * Setup download start year.
+  * Setup username and password.
+  * Setup download start year.
