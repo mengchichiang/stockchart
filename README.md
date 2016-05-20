@@ -1,6 +1,6 @@
 # stockchart
 Stockchart is portfolio managment, Yahoo Finance historical quotes downloader and plot stock chart.
-It focus on TW(Taiwan台股) HK(HongKong港股) and US stockmarket.
+It focus on Taiwan(台股), HongKong(港股) and US stock market.
 
 ## Quick start
 1. install node.js and mongodb 
@@ -28,9 +28,9 @@ It focus on TW(Taiwan台股) HK(HongKong港股) and US stockmarket.
 ## Usage
 
 ### Portfolio example
-  * A example csv  file `/stockchart/portfolioUS.csv` can be imported  under group US.
-  * US market stock can be listed in group TW or HK if the format is xxxx.US.
+  * Import example csv  file `/stockchart/portfolioUS.csv` under group US. Then download data and plot charts.
+  * add US market stock symbol(Yahoo Finance stock symbol) to group TW or HK by using xxxx.US format.
 
 ### config.ini
-  * Setup username and password.
+  * Setup login user name and password.
   * Setup download start year.
