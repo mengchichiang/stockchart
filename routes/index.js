@@ -22,7 +22,7 @@ router.get('/portfolio/:pfGroup(TW|US|HK)', function (req, res) {
    res.redirect(ppppp);
 });
 
-router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9])', function (req, res) {
+router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9]+)', function (req, res) {
   var pfGroup=req.params.pfGroup;
   var pfIndexNumber=parseInt(req.params.pfIndex.replace(/pf/g,""));
   //console.log("pfIndex",pfIndexNumber);
@@ -161,7 +161,7 @@ router.get('/portfolio/:pfGroup/import', function (req, res) {
 router.post('/portfolio/:pfGroup/import', function (req, res) {
   var curPath=__dirname,qryString='';
   var rootPath=curPath.replace(/\/routes/g,"");
-  var i,iCount,pfNameArray=[];
+  var i,iCount,pfNameArray=[],stockId;
   //console.log(req.files);
   importFile=rootPath + "/" + req.files.upload.path;
   var inArray=stockUtil.importPortfolioFile(importFile);
@@ -172,14 +172,17 @@ router.post('/portfolio/:pfGroup/import', function (req, res) {
   }
   inArray.forEach(function(element,index){ pfNameArray.push(element.shift()); } ) //take out portfolio Name of first row
   console.log(inArray);
-  console.log(pfNameArray);
+  console.log("portfolio name: " + pfNameArray);
   if (req.params.pfGroup=='HK'){ //tranform stockId+stockName to stockId
-    inArray.forEach(function(itemI,indexI){
+    inArray.forEach(function(itemI,indexI){ //itemI is portfolio (column of csv file)
       itemI.forEach(function(itemJ,indexJ){
-        var stockId=stockUtil.getStockIdFromPfLine(itemJ); //itemJ is symbol
+        if (itemJ.match(/(^\S+)\.(\w+$)/i))   //symbol is  xxxx.TW, xxxx.US in portfolio
+          stockId=itemJ;
+        else
+          stockId=String(Number(stockUtil.parseStockIdFromSymbol(itemJ))); //itemJ is symbol (row of csv file)
         inArray[indexI][indexJ]=stockId;
-        //console.log(itemJ);
-        //console.log(stockId);
+        console.log(itemJ);
+        console.log(stockId);
       }); 
     });
   }
@@ -212,16 +215,25 @@ router.get('/portfolio/:pfGroup/export', function (req, res) {
     tempArray[i]=[];
       jCount=pfArray[i].stockArray.length
         for(j=0; j<jCount ; j++){
-          if (pfGroup=='TW') { if (pfArray[i].stockArray[j].marketType=='US') tempArray[i][j] = pfArray[i].stockArray[j].stockId + '.US';
+          curStock=pfArray[i].stockArray[j];
+          if (pfGroup=='TW') { if (curStock.marketType!='TW') tempArray[i][j] = curStock.stockId + '.' + curStock.marketType;
                                else
-                                 tempArray[i][j] = pfArray[i].stockArray[j].stockName;//TW stock export stockName 
+                                 tempArray[i][j] = curStock.stockName;//TW stock export stockName 
                               }
           //港股export stockId + stockName
-          if (pfGroup=='HK') {  if (pfArray[i].stockArray[j].marketType=='US') tempArray[i][j] = pfArray[i].stockArray[j].stockId + '.US';
-                                else
-                                  tempArray[i][j] = pfArray[i].stockArray[j].stockId + pfArray[i].stockArray[j].stockName; 
+          if (pfGroup=='HK') { if (curStock.marketType!='HK') tempArray[i][j] = curStock.stockId + '.' + curStock.marketType;
+                               else
+                                 tempArray[i][j] = curStock.stockId + curStock.stockName; 
                              }
-          if (pfGroup=='US') tempArray[i][j] = pfArray[i].stockArray[j].stockId;//US stock export stockId
+          if (pfGroup=='US') { 
+            if (curStock.marketType!='US') tempArray[i][j] = curStock.stockId + '.' + curStock.marketType;
+            else {
+              if (curStock.stockId.match(/(^\S+)\.(\w+$)/i))   //symbol is  xxxx.TW, xxxx.US in portfolio
+                tempArray[i][j] = curStock.stockId + '.US';
+              else
+                tempArray[i][j] = curStock.stockId;//US stock export stockId
+            }    
+          }
         }
         if (jCount>maxjCount) maxjCount=jCount;       
         tempArray[i].unshift(pfArray[i].name); //add portfolio name
@@ -282,7 +294,7 @@ router.post('/portfolio/:pfGroup/:pfIndex/addSymbol', function (req, res) {
 });
 
 //for Ajax of portfolioSymbol_edit.html, portfolioSymbol_reorder.html. Response the portfolio that include stockArray
-router.post('/portfolio/:pfGroup/:pfIndex(pf[0-9])/symbolList', function (req, res) { //ajax response
+router.post('/portfolio/:pfGroup/:pfIndex(pf[0-9]+)/symbolList', function (req, res) { //ajax response
   pfGroup=req.params.pfGroup;
   pfIndex=req.params.pfIndex;
   pfIndexNumber=parseInt(req.params.pfIndex.replace(/pf/g,""));
@@ -312,7 +324,7 @@ router.post('/portfolio/:pfGroup/:pfIndex/updatePortfolioSymbolList', function (
 });
 
 /* edit symbol */
-router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9])/edit', function (req, res) {
+router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9]+)/edit', function (req, res) {
       var curPath=__dirname;
       var rootPath=curPath.replace(/\/routes/g,"");
       //console.log(curPath);
@@ -321,7 +333,7 @@ router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9])/edit', function (req, res) {
 });
 
 /* reorder symbol */
-router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9])/reorder', function (req, res) {
+router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9]+)/reorder', function (req, res) {
       var curPath=__dirname;
       var rootPath=curPath.replace(/\/routes/g,"");
       //console.log(curPath);
@@ -329,7 +341,7 @@ router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9])/reorder', function (req, res) 
       res.sendFile( rootPath + '/views/portfolioSymbol_reorder.html' );
 });
 
-router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9])/chart', function (req, res) {
+router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9]+)/chart', function (req, res) {
       //console.log("req.query=");      
       console.log(req.query);      
       var curPath=__dirname;
@@ -346,13 +358,13 @@ router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9])/chart', function (req, res) {
 });
 
 //for  portfolioSymbol.edit.html and addSymbol in portfolio.ejs.
-router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9])/getStockNameAuto', function (req, res) { //for autocomplete. Return stock name in CSV file
+router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9]+)/getStockNameAuto', function (req, res) { //for autocomplete. Return stock name in CSV file
   //console.log("req.query",req.query);
   res.send(stockUtil.searchStockNameFromCSV(req.params.pfGroup, req.query.term));
 })
 
 //for portfolioSymbol.edit.html and addSymbol in portfolio.ejs.
-router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9])/getStockIdName', function (req, res) {
+router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9]+)/getStockIdName', function (req, res) {
   var stockSymbol, marketType, stockId, stockName;
     console.log("req.query",req.query);              //queryString stockId is regard as stockSymbol. Input maybe XXXX.TW format
   if ((req.query.stockId !='')&&(req.query.stockId !=undefined)) { //keyin text in portfolioSymbol_edit.html stockId field, response mapped stockName
@@ -374,7 +386,7 @@ router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9])/getStockIdName', function (req
   }
 });
 
-router.post('/portfolio/:pfGroup/:pfIndex(pf[0-9])/queryLastStockData', function (req, res) {
+router.post('/portfolio/:pfGroup/:pfIndex(pf[0-9]+)/queryLastStockData', function (req, res) {
   //console.log("req.body",req.body);
   stockData.getHistoryLastData(req.body.stockId, req.body.marketType, function(err,result){ 
     //console.log(result);
@@ -382,7 +394,7 @@ router.post('/portfolio/:pfGroup/:pfIndex(pf[0-9])/queryLastStockData', function
   });
 });
 
-router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9])/queryStockData', function (req, res) {
+router.get('/portfolio/:pfGroup/:pfIndex(pf[0-9]+)/queryStockData', function (req, res) {
   console.log("req.query",req.query);
   var from=new Date("2000-01-01"),
       to=new Date();

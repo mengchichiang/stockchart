@@ -22,6 +22,7 @@ router.get('/', function (req, res) {
 router.post('/', function (req, res) {
   pollMsgQueue.length=0; //put download status message.
   //fs.unlinkSync("stockHistoryDownload.log"); //If the file was not found, send response error to client
+  res.setTimeout(0);
   async.series([
     function(callback){                                                               
       if (req.body.selectTW=="on") {

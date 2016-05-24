@@ -94,14 +94,14 @@ $(document).ready(function() {
   console.log(currentPf);
   //alert(currentPf.name);
   $("#pfStockTableTitle").text(currentPf.name);
-  $("tr:even").addClass("even");  /*给奇数行添加样式*/
-  $("tr:odd").addClass("odd");  /*偶数行添加样式*/
+  $("tr:even").addClass("even");  //add even row style
+  $("tr:odd").addClass("odd");  //add odd row style
   //處理Delete和addSymbol
   $('#btnDelete').on('click', delete_stockSymbol);
   $('#addSymbolForm').on('mouseenter','input[type=\'text\']',function () {
      $(this).autocomplete({source: "/portfolio/" + pfGroup + "/" + pfIndex + "/getStockNameAuto", delay: 1000, minLength: 0});//送出get qrystring為term=XXXX
   });
-  $("[id^='trid'] td").eq(0).css("width","130")
+  $("[id^='trid'] td").eq(0).css("width","180") // set stockId column width
   $("#pfStockTable").on('click',"[id^='trid'] td a",function(){
      //console.log($(this).parents("[id^=trid]").attr('id'));  
      var clickNo=$(this).parents("[id^=trid]").attr('id').replace("trid","");  
@@ -161,7 +161,7 @@ function queryLastStockData(pfStock,index){
 } 
 </script>
 <style>
-  .even{ background-color:#EBF5FF;} /*奇数行样式*/
+  .even{ background-color:#EBF5FF;} //even row style
   #pfStockTable { border:1px #cccccc solid;padding:1px; table-layout:fixed;}
   #pfStockTable tr th,td { width: 100px; border:1px #cccccc solid;padding:1px;}
   #pfStockTable tr th:first  { width: 300px; border:1px #cccccc solid;padding:1px;}
