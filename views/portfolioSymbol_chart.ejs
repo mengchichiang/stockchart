@@ -28,16 +28,18 @@ var stockObj=<%- stockObj %>,
     chartPeriod=["day","week","month"];
     //alert(pfIndex);
 var rangeButton=[{ type: 'month', count: 3, text: '3m' }, { type: 'month', count: 6, text: '6m' }, { type: 'month', count: 9, text: '9m' }, 
-                 { type: 'year', count: 1, text: '1y' }, { type: 'year', count: 1, text: '5y' },{ type: 'all', text: 'All' }];
+                 { type: 'year', count: 1, text: '1y' }, { type: 'year', count: 5, text: '5y' },{ type: 'all', text: 'All' }];
+var stockData={},dateRangeMax,dateRangeMin, dataRangeMax, dataRangeMin;
 
 window.moveTo(0, 0);
 window.resizeTo(screen.availWidth, screen.availHeight);
 
 $(function () {
+  //get index of query stock in watch list
   $.post("/portfolio/" + pfGroup + "/" + pfIndex + "/symbolList",
      function(portfolio){ 
        currentPf=portfolio;
-       for(i=0; i < portfolio.stockArray.length; i++) { //find the index of query stock in watchlist.
+       for(i=0; i < portfolio.stockArray.length; i++) {
          if(portfolio.stockArray[i].stockId == stockObj.stockId) {
            break;
          }
@@ -49,7 +51,7 @@ $(function () {
      'json'
   );
 //console.log(stockObj);
-chartk(stockObj, chartPeriodSelect);
+chartk(stockObj, chartPeriodSelect); //plot history graph
 $("#chartKeyInfo").text("[Up]: Previous Stock     [Down]: Next Stock     [Left/Right]:Range    [Space]Day/Week/Month    [ESC]:Exit ");
 
 document.onkeydown = function(e) {
@@ -95,10 +97,12 @@ document.onkeydown = function(e) {
             if (rangeSelect != 0 ) rangeSelect--
             //chart.rangeSelector.clickButton(0,{type: 'month', count: 3},true);
             $('#container').highcharts().rangeSelector.clickButton(rangeSelect, true);
+            setGraphRange();
             break;
         case 39: //right
             if (rangeSelect < (rangeButton.length-1) ) rangeSelect++;
             $('#container').highcharts().rangeSelector.clickButton(rangeSelect, true);
+            setGraphRange();
    //         chart.rangeSelector.clickButton(3,{type: 'month', count: 9},true);
             break;
         case 32: //space Bar
@@ -116,13 +120,43 @@ function chartkLoad(i, chartPeriodSelect){
             currentPf.stockArray[i].stockId + "&marketType=" + currentPf.stockArray[i].marketType + 
             "&stockName=" + currentPf.stockArray[i].stockName + "&period=" + chartPeriodSelect ;
 }
+
+function setGraphRange(){ //Dynamicly setting Mamximum and minimum value of Yaxis.
+  //date Max means Date.parse() result is Maximum.
+  dateRangeMax = $('input.highcharts-range-selector:eq(1)').val(); //Get maximum value of Y-axis in current graph. 
+  dateRangeMin = $('input.highcharts-range-selector:eq(0)').val();
+  console.log('dateRangeMax: ' + dateRangeMax);
+  console.log('dateRangeMin: ' + dateRangeMin);
+
+  //for(i=0; i<stockData.length; i++){
+  //  if (Date.parse(stockData[i].date).valueOf() >= Date.parse(dateRangeMax).valueOf()) break;
+  //}
+  for(i=stockData.length-1; i>0; i--){
+    if (Date.parse(stockData[i].date).valueOf() <= Date.parse(dateRangeMax).valueOf()) break;
+  }
+  dateRangeMaxIndex=i;
+  console.log("dateRangeMaxIndex: " + dateRangeMaxIndex);
+  dataRangeMax=stockData[dateRangeMaxIndex].high;
+  dataRangeMin=stockData[dateRangeMaxIndex].low;
+  for(i=dateRangeMaxIndex ; i>0 ; i--){
+    if (stockData[i].high > dataRangeMax) dataRangeMax = stockData[i].high;
+    if (stockData[i].low  < dataRangeMin) dataRangeMin = stockData[i].low;
+    if (Date.parse(stockData[i].date).valueOf() <= Date.parse(dateRangeMin).valueOf()) break;
+  }
+  console.log("dataRangeMax: " + dataRangeMax);
+  console.log("dataRangeMin: " + dataRangeMin);
+  dateRangeMinIndex=i;
+  console.log("dateRangeMinIndex: " + dateRangeMinIndex);
+  $('#container').highcharts().yAxis[0].update({max: dataRangeMax}); 
+  $('#container').highcharts().yAxis[0].update({min: dataRangeMin}); 
+}
+
 function chartk(stockObj,chartPeriodSelect){
    $.getJSON('/portfolio/' + pfGroup + '/' + pfIndex + '/queryStockData?stockId=' + stockObj.stockId +
             '&marketType=' + stockObj.marketType + '&stockName=' + stockObj.stockName, function (data) {
         data.sort(function(a,b){ return Date.parse(a.date)-Date.parse(b.date); });
-        console.log(data);
-        var dataMax = Math.max.apply(Math,data.map(function(o){return o.high;}));
-        var dataMin = Math.min.apply(Math,data.map(function(o){return o.high;}));
+        //console.log(data);
+        stockData=data;
         if ((stockObj.stockId==stockObj.stockName)||(stockObj.stockName=='null')) chartTitle=stockObj.stockId;
         else  chartTitle=stockObj.stockId + stockObj.stockName;
         if (pfGroup!=stockObj.marketType) chartTitle=chartTitle + '.' + stockObj.marketType;
@@ -131,7 +165,7 @@ function chartk(stockObj,chartPeriodSelect){
             volume = [],
             dataLength = data.length,
             groupingUnits=[],
-            i = 0;
+            i = 0,dateRangeMinIndex,dateRangeMaxIndex;
         var indicators = [];
         var sma5  = { id: stockObj.stockId, type: 'sma', name: 'SMA5', params: { period: 5 },
 	              styles: { strokeWidth: 0.2, stroke: 'cadetblue', dashstyle: 'solid' }, showInLegend: true },
@@ -153,17 +187,61 @@ function chartk(stockObj,chartPeriodSelect){
             rsi = { id: stockObj.stockId, type: 'rsi', params: { period: 14, overbought: 70, oversold: 30 },
 		    styles: { strokeWidth: 2, stroke: 'black', dashstyle: 'solid' },
 		    yAxis: { lineWidth: 2, title: { text:'RSI' } }, showInLegend: true };
+        if (chartPeriodSelect == 0) { 
+          groupingUnits=[['day',[1]],['week',[1]]];  //select period is daily chart: range=9 month
+          rangeSelect=2;  //will select rangeButton[2]
+          indicators=[sma5,sma10,sma20,sma60,sma240];
 
-        if (chartPeriodSelect == 0) { groupingUnits=[['day',[1]],['week',[1]]];
-                                      rangeSelect=2; indicators=[sma5,sma10,sma20,sma60,sma240];
-                                    }
-        if (chartPeriodSelect == 1) { groupingUnits=[['week',[1]]];
-                                      rangeSelect=3; indicators=[sma20,sma60,sma240];
-                                    }
-        if (chartPeriodSelect == 2) { groupingUnits=[['month',[1]]];
-                                      rangeSelect=4; indicators=[sma20,sma60,sma240];
-                                    }
-        for (i; i < dataLength; i += 1) {
+          dateRangeMaxIndex=stockData.length-1;
+          dateRangeMax=new Date(stockData[stockData.length-1].date);
+          if (dateRangeMax.getMonth()<9) { monthMin = dateRangeMax.getMonth() - 9 + 12 + 1; yearMin=String(Number(dateRangeMax.getFullYear())-1); }
+          else monthMin = dateRangeMax.getMonth() - 9 + 1;
+          dateRangeMin=new Date(yearMin + "-" + monthMin + "-" + dateRangeMax.getDate());
+          dataRangeMax=stockData[dateRangeMaxIndex].high;
+          dataRangeMin=stockData[dateRangeMaxIndex].low;
+          for(i=dateRangeMaxIndex ; i>0 ; i--){
+            if (stockData[i].high > dataRangeMax) dataRangeMax = stockData[i].high;
+            if (stockData[i].low  < dataRangeMin) dataRangeMin = stockData[i].low;
+            if (Date.parse(stockData[i].date).valueOf() <= Date.parse(dateRangeMin).valueOf()) break;
+          }
+          dateRangeMinIndex=i;
+          //console.log("chartPeriodSelect: " + chartPeriodSelect);
+          //console.log("dateRangeMax: " + dateRangeMax);
+          //console.log("dateRangeMin: " + dateRangeMin);
+          //console.log("dataRangeMax: " + dataRangeMax);
+          //console.log("dataRangeMin: " + dataRangeMin);
+        }
+        if (chartPeriodSelect == 1) {
+          groupingUnits=[['week',[1]]];  //select period is weekly chart: range=1 year
+          rangeSelect=3; 
+          indicators=[sma20,sma60,sma240];
+
+          dateRangeMaxIndex=stockData.length-1;
+          dateRangeMax=new Date(stockData[stockData.length-1].date);
+          dateRangeMin=new Date(String(Number(dateRangeMax.getFullYear())-1) + "-" + dateRangeMax.getMonth() + "-" + dateRangeMax.getDate());
+          dataRangeMax=stockData[dateRangeMaxIndex].high;
+          dataRangeMin=stockData[dateRangeMaxIndex].low;
+          for(i=dateRangeMaxIndex ; i>0 ; i--){
+            if (stockData[i].high > dataRangeMax) dataRangeMax = stockData[i].high;
+            if (stockData[i].low  < dataRangeMin) dataRangeMin = stockData[i].low;
+            if (Date.parse(stockData[i].date).valueOf() <= Date.parse(dateRangeMin).valueOf()) break;
+          }
+          dateRangeMinIndex=i;
+          //console.log("chartPeriodSelect: " + chartPeriodSelect);
+          //console.log("dateRangeMax: " + dateRangeMax);
+          //console.log("dateRangeMin: " + dateRangeMin);
+          //console.log("dataRangeMax: " + dataRangeMax);
+          //console.log("dataRangeMin: " + dataRangeMin);
+        }
+        if (chartPeriodSelect == 2) { 
+          groupingUnits=[['month',[1]]]; //select period is monthly chart: renge=all
+          rangeSelect=4; 
+          console.log("chartPeriodSelect: " + chartPeriodSelect);
+          indicators=[sma20,sma60,sma240];
+          dataRangeMax = Math.max.apply(Math,data.map(function(o){return o.high;}));
+          dataRangeMin = Math.min.apply(Math,data.map(function(o){return o.high;}));
+        }
+        for (i=0; i < dataLength; i += 1) {
             ohlc.push([
                 Date.parse(data[i].date), // the date, convert to millisecond
                 data[i].open, // open
@@ -171,31 +249,51 @@ function chartk(stockObj,chartPeriodSelect){
                 data[i].low, // low
                 data[i].close // close
             ]);
-
             volume.push([
                 Date.parse(data[i].date), // the date
                 data[i].volume // the volume
             ]);
         }
+        //console.log(ohlc);
         // create the chart
         $('#container').highcharts('StockChart', {
            indicators: indicators,
             tooltip:{ enabledIndicators: true },
             rangeSelector: { buttons: rangeButton, selected: rangeSelect },
             title: { text: chartTitle },
+            legend: {
+                      enabled: true,
+                      floating:true, //true:legend can overlay with graph
+                      layout: 'horizontal',
+                      align: 'center',
+                      verticalAlign: 'top',
+                      x:0,y:40,
+                      borderWidth: 0
+                    },
             xAxis:{  type: 'datetime',
-                     dateTimeLabelFormats: {
-                               month: '%e. %b',
-                               year: '%b'
-                             }
+                   //  tickInterval: 2678400000, //tick every month
+                     labels:{
+                             formatter: function() {
+	                               var d = new Date(this.value);
+                                       if (d.getUTCMonth() == 0){
+                                       return Highcharts.dateFormat("%e. %b-%Y",this.value);
+                                       }else{
+                                       return Highcharts.dateFormat("%e. %b",this.value);
+                                       }                       
+                                   }            
+                   //  dateTimeLabelFormats: {
+                   //            month: '%e. %b',
+                     //          year: '%b'
+                       //      }
+                    },
                   },
             yAxis: [{
                 labels: { align: 'right', x: -3 },
                 title: { text: 'OHLC' },
                 height: '90%',
                 lineWidth: 2,
-                max: dataMax, 
-                min: dataMin, 
+                max: dataRangeMax, 
+                min: dataRangeMin, 
                 maxPadding:0.01
                 }, {
                 labels: { align: 'right', x: -3 },
@@ -207,6 +305,7 @@ function chartk(stockObj,chartPeriodSelect){
             }],
             series: [{
                 type: 'candlestick',
+                showInLegend: false,  
                 id: stockObj.stockId, //must be set when use indicators.
                 name: stockObj.stockId,
                 color: 'green',
@@ -215,6 +314,7 @@ function chartk(stockObj,chartPeriodSelect){
                 dataGrouping: { units: groupingUnits, groupPixelWidth: 10 },
                 //pointInterval: 300 * 24 * 3600 * 1000
                 }, {
+                showInLegend: false,  
                 type: 'column',
                 name: 'Volume',
                 data: volume,
