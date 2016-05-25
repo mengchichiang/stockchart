@@ -256,6 +256,7 @@ function chartk(stockObj,chartPeriodSelect){
         }
         //console.log(ohlc);
         // create the chart
+        Highcharts.setOptions({ global: { useUTC: false } }); //set date in graph is local time.
         $('#container').highcharts('StockChart', {
            indicators: indicators,
             tooltip:{ enabledIndicators: true },
@@ -275,7 +276,7 @@ function chartk(stockObj,chartPeriodSelect){
                      labels:{
                              formatter: function() {
 	                               var d = new Date(this.value);
-                                       if (d.getUTCMonth() == 0){
+                                       if (d.getMonth() == 0){
                                        return Highcharts.dateFormat("%e. %b-%Y",this.value);
                                        }else{
                                        return Highcharts.dateFormat("%e. %b",this.value);
