@@ -1,6 +1,6 @@
 # stockchart
 Stockchart is portfolio managment, Yahoo Finance historical quotes downloader and plot stock chart.
-It focus on Taiwan(台股), HongKong(港股) and US stock market.
+It focus on Taiwan, HongKong and US stock market.
 
 ## Quick start
 1. install node.js and mongodb 
